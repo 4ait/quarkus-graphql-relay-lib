@@ -1,12 +1,11 @@
 package ru.code4a.graphql.relay.services
 
 import jakarta.enterprise.context.ApplicationScoped
-import jakarta.persistence.EntityManager
 import org.eclipse.microprofile.graphql.Name
 import ru.code4a.graphql.relay.annotations.GraphqlReadDatabaseMethod
 import ru.code4a.graphql.relay.annotations.GraphqlRelayNodeEntityById
 import ru.code4a.graphql.relay.interfaces.GraphqlRelayEntityGQLObjectBuilderGlobalService
-import ru.code4a.graphql.relay.interfaces.GraphqlRelayEntityGetter
+import ru.code4a.graphql.relay.interfaces.GraphqlRelayEntityGetterFactoryService
 import ru.code4a.graphql.relay.schema.objects.GraphqlNode
 import ru.code4a.graphql.relay.services.containers.GraphqlNodeEntityContainerID
 import ru.code4a.graphql.relay.utils.bytes.asLong
@@ -26,14 +25,10 @@ import kotlin.reflect.full.superclasses
  * - Managing node security through encrypted IDs
  *
  * @property nodeIdCipherGraphqlNodeService Service for encrypting and decrypting node IDs
- * @property entityManager JPA entity manager for database operations
- * @property graphqlRelayEntityGetter Service for retrieving entity objects
  */
 @ApplicationScoped
 class GraphqlRelayNodeManager(
-  private val nodeIdCipherGraphqlNodeService: NodeIdCipherGraphqlNodeService,
-  private val entityManager: EntityManager,
-  private val graphqlRelayEntityGetter: GraphqlRelayEntityGetter
+  private val nodeIdCipherGraphqlNodeService: NodeIdCipherGraphqlNodeService
 ) {
 
   /**
@@ -53,8 +48,8 @@ class GraphqlRelayNodeManager(
     val graphqlObjectClass: Class<*>,
     val graphqlType: String,
     val objectIdGetter: (Any) -> Any,
-    val entityGetterById: (Long, GraphqlRelayEntityGetter) -> Any?,
-    val graphqlNodeGetter: (Long, GraphqlRelayEntityGetter) -> GraphqlNode?
+    val entityGetter: GraphqlRelayEntityGetterFactoryService.GraphqlRelayEntityGetter,
+    val graphqlNodeGetter: (Long) -> GraphqlNode?
   )
 
   companion object {
@@ -78,6 +73,9 @@ class GraphqlRelayNodeManager(
 
       val graphqlRelayEntityGQLObjectBuilderGlobalService =
         ServiceLoader.load(GraphqlRelayEntityGQLObjectBuilderGlobalService::class.java).first()
+
+      val entityGetterFactoryService =
+        ServiceLoader.load(GraphqlRelayEntityGetterFactoryService::class.java).first()
 
       val md5 = MessageDigest.getInstance("MD5")
 
@@ -134,10 +132,11 @@ class GraphqlRelayNodeManager(
 
         require(entityGetIdMethod != null) { "Cannot find getId for entity class ${entityClass.name}" }
 
-        val entityGetterById =
-          { id: Long, graphqlRelayEntityGetter: GraphqlRelayEntityGetter ->
-            graphqlRelayEntityGetter.getEntityById(graphqlRelayNodeEntityObjectClass, id)
-          }
+        val entityGetter =
+          entityGetterFactoryService.createGetter(
+            graphqlRelayNodeEntityObjectClass = graphqlRelayNodeEntityObjectClass,
+            entityClass = entityClass
+          )
 
         val objectIdGetter =
           { obj: Any ->
@@ -145,8 +144,8 @@ class GraphqlRelayNodeManager(
           }
 
         val graphqlNodeGetter =
-          { id: Long, graphqlRelayEntityGetter: GraphqlRelayEntityGetter ->
-            val entity = entityGetterById(id, graphqlRelayEntityGetter)
+          { id: Long ->
+            val entity = entityGetter.getEntityById(id)
 
             if (entity == null) {
               null
@@ -162,7 +161,7 @@ class GraphqlRelayNodeManager(
             graphqlObjectClass = graphqlRelayNodeEntityObjectClass,
             graphqlType = objectGraphqlType,
             objectIdGetter = objectIdGetter,
-            entityGetterById = entityGetterById,
+            entityGetter = entityGetter,
             graphqlNodeGetter = graphqlNodeGetter
           )
 
@@ -237,7 +236,7 @@ class GraphqlRelayNodeManager(
 
     require(nodeInfo != null) { "Node with object id $nodeID not found" }
 
-    return nodeInfo.entityGetterById(graphqlNodeEntityContainerID.entityId, graphqlRelayEntityGetter)
+    return nodeInfo.entityGetter.getEntityById(graphqlNodeEntityContainerID.entityId)
   }
 
   /**
@@ -256,7 +255,7 @@ class GraphqlRelayNodeManager(
 
     require(nodeInfo != null) { "Node with object id $nodeID not found" }
 
-    return nodeInfo.graphqlNodeGetter(graphqlNodeEntityContainerID.entityId, graphqlRelayEntityGetter)
+    return nodeInfo.graphqlNodeGetter(graphqlNodeEntityContainerID.entityId)
   }
 
   private fun NodeInfo.buildID(obj: Any): String {

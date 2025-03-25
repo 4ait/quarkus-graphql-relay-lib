@@ -150,33 +150,47 @@ class MyCipher : GraphqlRelayCipher {
 }
 ```
 
-Implement the `GraphqlRelayEntityGetter`:
+Implement the `GraphqlRelayEntityGetterFactoryService`:
 
 ```kotlin
-@ApplicationScoped
-class MyEntityGetter(
-  private val entityManager: EntityManager,
-  private val securityService: SecurityService
-) : GraphqlRelayEntityGetter {
-  override fun getEntityById(graphqlRelayNodeEntityObjectClass: Class<*>, id: Long): Any? {
-    // This is where you can implement access control checks before returning entities
+// Note: This service is loaded via Java ServiceLoader
+class MyEntityGetterFactoryService : GraphqlRelayEntityGetterFactoryService {
+
+  // inject this with Arc
+  lateinit var entityManager: EntityManager
+  lateinit var securityService: SecurityService
+
+  override fun createGetter(
+    graphqlRelayNodeEntityObjectClass: Class<*>,
+    entityClass: Class<*>
+  ): GraphqlRelayEntityGetterFactoryService.GraphqlRelayEntityGetter {
     return when (graphqlRelayNodeEntityObjectClass) {
-      UserGQLObject::class.java -> {
-        val user = entityManager.find(User::class.java, id)
+      UserGQLObject::class.java -> object : GraphqlRelayEntityGetterFactoryService.GraphqlRelayEntityGetter {
+        override fun getEntityById(id: Long): Any? {
+          val user = entityManager.find(User::class.java, id)
 
-        // Check if current user has permission to access this entity
-        if (user != null && !securityService.hasAccessTo(user)) {
-          return null
+          // Check if current user has permission to access this entity
+          if (user != null && !securityService.hasAccessTo(user)) {
+            return null
+          }
+
+          return user
         }
-
-        return user
       }
       // Add other entity mappings here
-      else -> null
+      else -> object : GraphqlRelayEntityGetterFactoryService.GraphqlRelayEntityGetter {
+        override fun getEntityById(id: Long): Any? {
+          return null // Default implementation returns null
+        }
+      }
     }
   }
 }
 ```
+
+You must register this service in
+`META-INF/services/ru.code4a.graphql.relay.interfaces.GraphqlRelayEntityGetterFactoryService`
+with the fully qualified class name of your implementation.
 
 ### Defining GraphQL Queries
 
