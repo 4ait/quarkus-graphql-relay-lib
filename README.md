@@ -422,8 +422,8 @@ override val id by lazy(LazyThreadSafetyMode.NONE) {
 
 ## License
 
-[LICENSE INFORMATION]
+Apache 2.0
 
 ## Contributing
 
-[CONTRIBUTION GUIDELINES]
+Contributions are welcome! Please feel free to submit a Pull Request.
