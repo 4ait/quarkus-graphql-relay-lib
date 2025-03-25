@@ -1,5 +1,7 @@
 package ru.code4a.graphql.relay.services
 
+import io.quarkus.bootstrap.classloading.QuarkusClassLoader
+import io.quarkus.bootstrap.runner.RunnerClassLoader
 import jakarta.enterprise.context.ApplicationScoped
 import org.eclipse.microprofile.graphql.Name
 import ru.code4a.graphql.relay.annotations.GraphqlReadDatabaseMethod
@@ -65,8 +67,8 @@ class GraphqlRelayNodeManager(
       val nodeInfoByEntityClass = mutableMapOf<Class<*>, NodeInfo>()
 
       val graphqlRelayNodeEntityObjectsClassNames: List<String> =
-        GraphqlRelayNodeManager::class
-          .java
+        Thread.currentThread()
+          .getContextClassLoader()
           .getResource("ru/code4a/graphql/relay/gen/relaynodeobjects")!!
           .readText()
           .split("\n")

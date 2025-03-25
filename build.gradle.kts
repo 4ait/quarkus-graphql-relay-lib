@@ -86,6 +86,10 @@ repositories {
   mavenCentral()
 }
 
+allOpen {
+  annotation("jakarta.enterprise.context.ApplicationScoped")
+}
+
 noArg {
   annotation("org.eclipse.microprofile.graphql.Input")
 }
