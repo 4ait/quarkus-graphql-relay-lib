@@ -4,8 +4,12 @@ group = "ru.code4a"
 version = file("version").readText().trim()
 
 plugins {
-  kotlin("jvm") version "2.0.21"
-  kotlin("plugin.serialization") version "2.0.21"
+  val kotlinVersion = "2.0.21"
+
+  kotlin("jvm") version kotlinVersion
+  kotlin("plugin.serialization") version kotlinVersion
+  kotlin("plugin.allopen") version kotlinVersion
+  kotlin("plugin.noarg") version kotlinVersion
 
   id("org.kordamp.gradle.jandex") version "1.1.0"
 
@@ -80,6 +84,10 @@ publishing {
 
 repositories {
   mavenCentral()
+}
+
+noArg {
+  annotation("org.eclipse.microprofile.graphql.Input")
 }
 
 tasks.withType<Test> {
