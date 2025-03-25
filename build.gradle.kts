@@ -32,7 +32,7 @@ publishing {
           "A comprehensive library for implementing the Relay GraphQL specification in Quarkus applications. \n" +
             "  It provides secure node identification, cursor-based pagination, connection pattern implementation, \n" +
             "  and seamless integration with JPA/Hibernate for building Relay-compliant GraphQL APIs."
-        url = "https://github.com/4ait/quarkus-auth-lib"
+        url = "https://github.com/4ait/quarkus-graphql-relay-lib"
         inceptionYear = "2025"
         licenses {
           license {
@@ -59,9 +59,9 @@ publishing {
           url = "https://4ait.ru"
         }
         scm {
-          connection = "scm:git:git://github.com:4ait/quarkus-auth-lib.git"
-          developerConnection = "scm:git:ssh://github.com:4ait/quarkus-auth-lib.git"
-          url = "https://github.com/4ait/quarkus-auth-lib"
+          connection = "scm:git:git://github.com:4ait/quarkus-graphql-relay-lib.git"
+          developerConnection = "scm:git:ssh://github.com:4ait/quarkus-graphql-relay-lib.git"
+          url = "https://github.com/4ait/quarkus-graphql-relay-lib"
         }
       }
     }
