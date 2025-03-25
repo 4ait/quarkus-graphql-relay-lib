@@ -22,7 +22,7 @@ Add the dependency to your project:
 
 <dependency>
   <groupId>ru.code4a</groupId>
-  <artifactId>quarkus-graphql-relay-lib</artifactId>
+  <artifactId>quarkus-graphql-relay</artifactId>
   <version>{version}</version>
 </dependency>
 ```
