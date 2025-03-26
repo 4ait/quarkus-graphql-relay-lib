@@ -66,9 +66,10 @@ class GraphqlRelayNodeManager(
       val nodeInfoByObjectGraphqlClass = mutableMapOf<Class<*>, NodeInfo>()
       val nodeInfoByEntityClass = mutableMapOf<Class<*>, NodeInfo>()
 
+      val classLoader = Thread.currentThread().contextClassLoader
+
       val graphqlRelayNodeEntityObjectsClassNames: List<String> =
-        Thread.currentThread()
-          .getContextClassLoader()
+        classLoader
           .getResource("ru/code4a/graphql/relay/gen/relaynodeobjects")!!
           .readText()
           .split("\n")
@@ -82,7 +83,7 @@ class GraphqlRelayNodeManager(
       val md5 = MessageDigest.getInstance("MD5")
 
       for (graphqlRelayNodeEntityObjectClassName in graphqlRelayNodeEntityObjectsClassNames) {
-        val graphqlRelayNodeEntityObjectClass = Class.forName(graphqlRelayNodeEntityObjectClassName)
+        val graphqlRelayNodeEntityObjectClass = classLoader.loadClass(graphqlRelayNodeEntityObjectClassName)
 
         if (!graphqlRelayNodeEntityObjectClass.kotlin.superclasses.contains(GraphqlNode::class)) {
           throw RuntimeException(
