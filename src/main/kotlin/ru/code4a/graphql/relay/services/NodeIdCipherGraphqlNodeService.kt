@@ -59,7 +59,7 @@ class NodeIdCipherGraphqlNodeService(
         iv = iv,
       )
 
-    return Base64.getEncoder().encodeToString(encrypted)
+    return Base64.getUrlEncoder().encodeToString(encrypted)
   }
 
   /**
@@ -71,7 +71,7 @@ class NodeIdCipherGraphqlNodeService(
    */
   @OptIn(ExperimentalSerializationApi::class)
   fun <T> decryptFromNodeId(clazz: Class<T>, cursor: String): T {
-    val nodeIdBytes = Base64.getDecoder().decode(cursor)
+    val nodeIdBytes = Base64.getUrlDecoder().decode(cursor)
 
     val decryptedCursor =
       cipher.decrypt(

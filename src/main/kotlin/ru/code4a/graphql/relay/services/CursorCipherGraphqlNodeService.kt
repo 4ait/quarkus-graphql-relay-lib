@@ -59,7 +59,7 @@ class CursorCipherGraphqlNodeService(
         iv = iv,
       )
 
-    return Base64.getEncoder().encodeToString(encrypted)
+    return Base64.getUrlEncoder().encodeToString(encrypted)
   }
 
   /**
@@ -71,7 +71,7 @@ class CursorCipherGraphqlNodeService(
    */
   @OptIn(ExperimentalSerializationApi::class)
   fun <T> decryptFromCursor(clazz: Class<T>, cursor: String): T {
-    val cursorBytes = Base64.getDecoder().decode(cursor)
+    val cursorBytes = Base64.getUrlDecoder().decode(cursor)
 
     val decryptedCursor =
       cipher.decrypt(
