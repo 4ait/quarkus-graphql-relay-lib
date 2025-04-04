@@ -59,7 +59,7 @@ class NodeIdCipherGraphqlNodeService(
         iv = iv,
       )
 
-    return Base64.getUrlEncoder().encodeToString(encrypted)
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(encrypted)
   }
 
   /**
