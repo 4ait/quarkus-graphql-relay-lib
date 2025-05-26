@@ -1,6 +1,7 @@
 package ru.code4a.graphql.relay.schema.objects
 
 import org.eclipse.microprofile.graphql.Name
+import org.eclipse.microprofile.graphql.NonNull
 
 /**
  * Generic GraphQL connection object that implements the Relay Connection specification.
@@ -11,8 +12,8 @@ import org.eclipse.microprofile.graphql.Name
  * @property pageInfo Information about the connection's pagination state
  */
 @Name("Connection")
-data class ConnectionGQLObject<T>(
-  val edges: List<Edge<T>>,
+data class ConnectionGQLObject<T : Any>(
+  val edges: List<@NonNull Edge<@NonNull T>>,
   val pageInfo: PageInfo
 ) {
   /**
@@ -22,9 +23,10 @@ data class ConnectionGQLObject<T>(
    * @property cursor A opaque string representing the position of this node in the connection
    * @property node The actual node data
    */
-  data class Edge<T>(
+  data class Edge<T : Any>(
     val cursor: String,
-    val node: T
+    @NonNull
+    val node: @NonNull T
   )
 
   /**

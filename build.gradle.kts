@@ -153,3 +153,9 @@ jreleaser {
     }
   }
 }
+
+kotlin {
+  compilerOptions {
+    freeCompilerArgs.add("-Xemit-jvm-type-annotations")
+  }
+}
