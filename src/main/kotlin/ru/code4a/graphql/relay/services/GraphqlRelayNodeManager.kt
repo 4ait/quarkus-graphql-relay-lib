@@ -1,7 +1,5 @@
 package ru.code4a.graphql.relay.services
 
-import io.quarkus.bootstrap.classloading.QuarkusClassLoader
-import io.quarkus.bootstrap.runner.RunnerClassLoader
 import jakarta.enterprise.context.ApplicationScoped
 import org.eclipse.microprofile.graphql.Name
 import ru.code4a.graphql.relay.annotations.GraphqlReadDatabaseMethod
@@ -216,9 +214,21 @@ class GraphqlRelayNodeManager(
    * @throws IllegalArgumentException if the node object type is not registered
    */
   fun <T : GraphqlNode> getNodeIdForObject(obj: Any, nodeObject: T): String {
-    val nodeInfo = nodeInfoByObjectGraphqlClass[nodeObject::class.java]
+    return getNodeIdForObject(obj, nodeObject::class.java)
+  }
 
-    require(nodeInfo != null) { "Node with object class ${nodeObject::class} is not found" }
+  /**
+   * Generates a node ID for an entity object using its corresponding GraphQL node class.
+   *
+   * @param obj The entity object
+   * @param nodeClass The GraphQL node class
+   * @return A globally unique ID string for the object
+   * @throws IllegalArgumentException if the node object type is not registered
+   */
+  fun <T : GraphqlNode> getNodeIdForObject(obj: Any, nodeClass: Class<T>): String {
+    val nodeInfo = nodeInfoByObjectGraphqlClass[nodeClass]
+
+    require(nodeInfo != null) { "Node with object class $nodeClass is not found" }
 
     return nodeInfo.buildID(obj)
   }
@@ -277,4 +287,15 @@ class GraphqlRelayNodeManager(
 @GraphqlReadDatabaseMethod
 fun <T> GraphqlRelayNodeManager.getTypedEntityByNodeId(nodeID: String): T? {
   return getEntityByNodeId(nodeID) as? T?
+}
+
+/**
+ * Generates a node ID for an entity object using its corresponding GraphQL node type.
+ *
+ * @param obj The entity object
+ * @return A globally unique ID string for the object
+ * @throws IllegalArgumentException if the node object type is not registered
+ */
+inline fun <reified RelayNode : GraphqlNode> GraphqlRelayNodeManager.getNodeIdForObject(obj: Any): String {
+  return getNodeIdForObject(obj, RelayNode::class.java)
 }
