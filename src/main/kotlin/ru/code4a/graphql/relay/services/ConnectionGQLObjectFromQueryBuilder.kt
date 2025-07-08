@@ -345,35 +345,25 @@ class ConnectionGQLObjectFromQueryBuilder(
         else -> !keyedResultList.isFirstPage
       }
 
+    val edges =
+      resultList.map { entity ->
+        ConnectionGQLObject.Edge(
+          cursor = cursorConverter.createCursorFromEntity(entity),
+          node = builder.get(entity)
+        )
+      }
+
     return ConnectionGQLObject(
-      edges =
-        resultList.map { entity ->
-          ConnectionGQLObject.Edge(
-            cursor = cursorConverter.createCursorFromEntity(entity),
-            node = builder.get(entity)
-          )
-        },
+      edges = edges,
       pageInfo =
         ConnectionGQLObject.PageInfo(
           hasPreviousPage = hasPreviousPage,
           hasNextPage = hasNextPage,
           startCursorBuilder = {
-            val startCursorOrder = cursorConverter.getHibernateOrders(clazz)
-
-            val orderedQuery = selectionQuery.setOrder(startCursorOrder).setFetchSize(1)
-
-            orderedQuery.resultList.firstOrNull()?.let {
-              cursorConverter.createCursorFromEntity(it)
-            }
+            edges.firstOrNull()?.cursor
           },
           endCursorBuilder = {
-            val endCursorOrder = cursorConverter.getHibernateOrdersReversed(clazz)
-
-            val orderedQuery = selectionQuery.setOrder(endCursorOrder).setFetchSize(1)
-
-            orderedQuery.resultList.firstOrNull()?.let {
-              cursorConverter.createCursorFromEntity(it)
-            }
+            edges.lastOrNull()?.cursor
           }
         )
     )
