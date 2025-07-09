@@ -65,7 +65,7 @@ class ConnectionGQLObjectFromQueryBuilder(
       orderConverters.map { orderConverter ->
         when (orderConverter.orderType) {
           OrderTypeGQLEnum.ASC ->
-            Order.asc(clazz, orderConverter.entityFieldName).reverse()
+            Order.asc(clazz, orderConverter.entityFieldName)
 
           OrderTypeGQLEnum.DESC ->
             Order.desc(clazz, orderConverter.entityFieldName)
