@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped
 import jakarta.persistence.EntityManager
 import jakarta.persistence.criteria.CriteriaQuery
 import org.hibernate.Session
+import org.hibernate.query.NullPrecedence
 import org.hibernate.query.Order
 import org.hibernate.query.Page
 import ru.code4a.graphql.relay.annotations.GraphqlConnectionOrderField
@@ -15,6 +16,8 @@ import ru.code4a.graphql.relay.schema.enums.OrderTypeGQLEnum
 import ru.code4a.graphql.relay.schema.inputs.OrderIdOnlyGQLInput
 import ru.code4a.graphql.relay.schema.objects.ConnectionGQLObject
 import ru.code4a.graphql.relay.services.containers.CursorContainer
+import ru.code4a.graphql.relay.utils.reverse
+import ru.code4a.graphql.relay.utils.withNullPrecedence
 import java.time.Instant
 
 /**
@@ -45,7 +48,8 @@ class ConnectionGQLObjectFromQueryBuilder(
     val entityValueGetter: String,
     val converterToString: (value: Comparable<*>) -> String,
     val converterFromString: (value: String) -> Comparable<*>,
-    val orderType: OrderTypeGQLEnum
+    val orderType: OrderTypeGQLEnum,
+    val nullsInDescOrder: NullPrecedence
   )
 
   /**
@@ -65,10 +69,19 @@ class ConnectionGQLObjectFromQueryBuilder(
       orderConverters.map { orderConverter ->
         when (orderConverter.orderType) {
           OrderTypeGQLEnum.ASC ->
-            Order.asc(clazz, orderConverter.entityFieldName)
+            Order
+              .asc(clazz, orderConverter.entityFieldName)
+              .withNullPrecedence(
+                orderConverter.nullsInDescOrder.reverse()
+              )
+
 
           OrderTypeGQLEnum.DESC ->
-            Order.desc(clazz, orderConverter.entityFieldName)
+            Order
+              .desc(clazz, orderConverter.entityFieldName)
+              .withNullPrecedence(
+                orderConverter.nullsInDescOrder
+              )
         }
       }
 
@@ -76,10 +89,18 @@ class ConnectionGQLObjectFromQueryBuilder(
       orderConverters.map { orderConverter ->
         when (orderConverter.orderType) {
           OrderTypeGQLEnum.DESC ->
-            Order.asc(clazz, orderConverter.entityFieldName)
+            Order
+              .asc(clazz, orderConverter.entityFieldName)
+              .withNullPrecedence(
+                orderConverter.nullsInDescOrder.reverse()
+              )
 
           OrderTypeGQLEnum.ASC ->
-            Order.desc(clazz, orderConverter.entityFieldName)
+            Order
+              .desc(clazz, orderConverter.entityFieldName)
+              .withNullPrecedence(
+                orderConverter.nullsInDescOrder
+              )
         }
       }
 
@@ -225,7 +246,8 @@ class ConnectionGQLObjectFromQueryBuilder(
                 converterToString = converterToString,
                 converterFromString = converterFromString,
                 orderType = orderType,
-                entityValueGetter = graphqlOrderAnnotation.entityValueGetter
+                entityValueGetter = graphqlOrderAnnotation.entityValueGetter,
+                nullsInDescOrder = graphqlOrderAnnotation.nullsInDescOrder
               )
             )
           }

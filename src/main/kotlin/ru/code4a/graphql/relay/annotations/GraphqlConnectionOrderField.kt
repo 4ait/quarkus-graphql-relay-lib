@@ -1,5 +1,7 @@
 package ru.code4a.graphql.relay.annotations
 
+import org.hibernate.query.NullPrecedence
+
 /**
  * Annotation for fields in GraphQL input objects that define ordering criteria for connections.
  * Specifies how a field in the input object maps to an entity field for sorting.
@@ -11,7 +13,13 @@ package ru.code4a.graphql.relay.annotations
 annotation class GraphqlConnectionOrderField(
   val fieldType: Type,
   val entityFieldName: String,
-  val entityValueGetter: String
+  val entityValueGetter: String,
+  /**
+   * Null precedence strategy that defines behavior for DESC ordering.
+   * ASC ordering will automatically use inverted precedence to maintain
+   * consistent relative positioning of nulls across sort directions.
+   */
+  val nullsInDescOrder: NullPrecedence = NullPrecedence.NONE
 ) {
   enum class Type {
     LONG,
