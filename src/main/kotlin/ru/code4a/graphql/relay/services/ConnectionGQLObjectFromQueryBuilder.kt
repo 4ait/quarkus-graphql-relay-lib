@@ -65,7 +65,7 @@ class ConnectionGQLObjectFromQueryBuilder(
       orderConverters.map { orderConverter ->
         when (orderConverter.orderType) {
           OrderTypeGQLEnum.ASC ->
-            Order.asc(clazz, orderConverter.entityFieldName)
+            Order.asc(clazz, orderConverter.entityFieldName).reverse()
 
           OrderTypeGQLEnum.DESC ->
             Order.desc(clazz, orderConverter.entityFieldName)
@@ -268,7 +268,7 @@ class ConnectionGQLObjectFromQueryBuilder(
     before: String?,
     order: List<Any>?,
     builder: GraphqlRelayResponseObjectBuilder<T, R>,
-    limit: Int? = 100
+    limit: Int = 100
   ): ConnectionGQLObject<R> {
     if (first != null && last != null) {
       throw InvalidCombinationUsageCursorPaginationParamsGraphqlException(listOf("first", "last"))
@@ -295,21 +295,26 @@ class ConnectionGQLObjectFromQueryBuilder(
 
     val numberRowsToBeFetched =
       when {
-        first != null -> first
-        last != null -> last
-        else -> limit // Default limit
+        first != null -> {
+          if (first > limit) {
+            throw CannotBeTakenWithThisLimitGraphqlException(first.toLong())
+          }
+
+          first
+        }
+
+        last != null -> {
+          if (last > limit) {
+            throw CannotBeTakenWithThisLimitGraphqlException(last.toLong())
+          }
+
+          last
+        }
+
+        else -> limit
       }
 
-    if (limit != null && numberRowsToBeFetched != null && numberRowsToBeFetched > limit) {
-      throw CannotBeTakenWithThisLimitGraphqlException(numberRowsToBeFetched.toLong())
-    }
-
-    val queryPage =
-      if (numberRowsToBeFetched != null) {
-        Page.first(numberRowsToBeFetched)
-      } else {
-        Page.first(Int.MAX_VALUE)
-      }
+    val queryPage = Page.first(numberRowsToBeFetched)
 
     val queryKeyedPage =
       when {
@@ -412,7 +417,7 @@ inline fun <reified T : Any, R : Any> ConnectionGQLObjectFromQueryBuilder.build(
   before: String?,
   order: List<Any>?,
   builder: GraphqlRelayResponseObjectBuilder<T, R>,
-  limit: Int? = 100
+  limit: Int = 100
 ): ConnectionGQLObject<R> =
   this.build(
     clazz = T::class.java,
