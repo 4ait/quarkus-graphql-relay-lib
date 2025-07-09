@@ -15,6 +15,7 @@ annotation class GraphqlConnectionOrderField(
 ) {
   enum class Type {
     LONG,
-    STRING
+    STRING,
+    INSTANT
   }
 }

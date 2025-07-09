@@ -15,6 +15,7 @@ import ru.code4a.graphql.relay.schema.enums.OrderTypeGQLEnum
 import ru.code4a.graphql.relay.schema.inputs.OrderIdOnlyGQLInput
 import ru.code4a.graphql.relay.schema.objects.ConnectionGQLObject
 import ru.code4a.graphql.relay.services.containers.CursorContainer
+import java.time.Instant
 
 /**
  * Service for building ConnectionGQLObject instances from JPA queries.
@@ -187,6 +188,12 @@ class ConnectionGQLObjectFromQueryBuilder(
                     (value as Long).toString()
                   }
                 }
+
+                GraphqlConnectionOrderField.Type.INSTANT -> {
+                  { value: Comparable<*> ->
+                    (value as Instant).toString()
+                  }
+                }
               }
 
             val converterFromString =
@@ -200,6 +207,12 @@ class ConnectionGQLObjectFromQueryBuilder(
                 GraphqlConnectionOrderField.Type.LONG -> {
                   { value: String ->
                     value.toLong()
+                  }
+                }
+
+                GraphqlConnectionOrderField.Type.INSTANT -> {
+                  { value: String ->
+                    Instant.parse(value)
                   }
                 }
               }
