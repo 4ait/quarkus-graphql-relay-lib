@@ -267,7 +267,8 @@ class ConnectionGQLObjectFromQueryBuilder(
     after: String?,
     before: String?,
     order: List<Any>?,
-    builder: GraphqlRelayResponseObjectBuilder<T, R>
+    builder: GraphqlRelayResponseObjectBuilder<T, R>,
+    maxLimit: Int? = 100
   ): ConnectionGQLObject<R> {
     if (first != null && last != null) {
       throw InvalidCombinationUsageCursorPaginationParamsGraphqlException(listOf("first", "last"))
@@ -296,14 +297,19 @@ class ConnectionGQLObjectFromQueryBuilder(
       when {
         first != null -> first
         last != null -> last
-        else -> 100 // Default limit
+        else -> maxLimit // Default limit
       }
 
-    if (limit > 100) {
+    if (maxLimit != null && limit != null && limit > maxLimit) {
       throw CannotBeTakenWithThisLimitGraphqlException(limit.toLong())
     }
 
-    val queryPage = Page.first(limit)
+    val queryPage =
+      if (limit != null) {
+        Page.first(limit)
+      } else {
+        Page.first(Int.MAX_VALUE)
+      }
 
     val queryKeyedPage =
       when {
@@ -405,7 +411,8 @@ inline fun <reified T : Any, R : Any> ConnectionGQLObjectFromQueryBuilder.build(
   after: String?,
   before: String?,
   order: List<Any>?,
-  builder: GraphqlRelayResponseObjectBuilder<T, R>
+  builder: GraphqlRelayResponseObjectBuilder<T, R>,
+  maxLimit: Int? = 100
 ): ConnectionGQLObject<R> =
   this.build(
     clazz = T::class.java,
@@ -415,5 +422,6 @@ inline fun <reified T : Any, R : Any> ConnectionGQLObjectFromQueryBuilder.build(
     after = after,
     before = before,
     order = order,
-    builder = builder
+    builder = builder,
+    maxLimit = maxLimit
   )
