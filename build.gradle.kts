@@ -4,7 +4,7 @@ group = "ru.code4a"
 version = file("version").readText().trim()
 
 plugins {
-  val kotlinVersion = "2.0.21"
+  val kotlinVersion = "2.1.21"
 
   kotlin("jvm") version kotlinVersion
   kotlin("plugin.serialization") version kotlinVersion
@@ -112,8 +112,8 @@ dependencies {
   implementation("io.quarkus:quarkus-smallrye-graphql:${quarkusVersion}")
   implementation("io.quarkus:quarkus-core-deployment:${quarkusVersion}")
 
-  implementation("org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.7.3")
-  implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.7.3")
+  implementation("org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.8.1")
+  implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.8.1")
 
   testImplementation(kotlin("test"))
   testImplementation("org.mockito:mockito-core:5.12.0")

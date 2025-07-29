@@ -3,6 +3,7 @@ package ru.code4a.graphql.relay.services
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.persistence.EntityManager
 import jakarta.persistence.criteria.CriteriaQuery
+import jakarta.persistence.criteria.Nulls
 import org.hibernate.Session
 import org.hibernate.query.NullPrecedence
 import org.hibernate.query.Order
@@ -49,7 +50,7 @@ class ConnectionGQLObjectFromQueryBuilder(
     val converterToString: (value: Comparable<*>) -> String,
     val converterFromString: (value: String) -> Comparable<*>,
     val orderType: OrderTypeGQLEnum,
-    val nullsInDescOrder: NullPrecedence
+    val nullsInDescOrder: Nulls
   )
 
   /**

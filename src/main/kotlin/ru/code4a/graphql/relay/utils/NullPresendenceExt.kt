@@ -1,21 +1,21 @@
 package ru.code4a.graphql.relay.utils
 
-import org.hibernate.query.NullPrecedence
+import jakarta.persistence.criteria.Nulls
 import org.hibernate.query.Order
 
 
-fun NullPrecedence.reverse(): NullPrecedence {
+fun Nulls.reverse(): Nulls {
   return when (this) {
-    NullPrecedence.NONE -> NullPrecedence.NONE
-    NullPrecedence.FIRST -> NullPrecedence.LAST
-    NullPrecedence.LAST -> NullPrecedence.FIRST
+    Nulls.NONE -> Nulls.NONE
+    Nulls.FIRST -> Nulls.LAST
+    Nulls.LAST -> Nulls.FIRST
   }
 }
 
-fun <T> Order<T>.withNullPrecedence(nullPrecedence: NullPrecedence): Order<T> {
+fun <T> Order<T>.withNullPrecedence(nullPrecedence: Nulls): Order<T> {
   return when (nullPrecedence) {
-    NullPrecedence.NONE -> this
-    NullPrecedence.FIRST -> withNullsFirst()
-    NullPrecedence.LAST -> withNullsLast()
+    Nulls.NONE -> this
+    Nulls.FIRST -> withNullsFirst()
+    Nulls.LAST -> withNullsLast()
   }
 }

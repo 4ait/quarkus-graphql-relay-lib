@@ -1,5 +1,6 @@
 package ru.code4a.graphql.relay.annotations
 
+import jakarta.persistence.criteria.Nulls
 import org.hibernate.query.NullPrecedence
 
 /**
@@ -19,7 +20,7 @@ annotation class GraphqlConnectionOrderField(
    * ASC ordering will automatically use inverted precedence to maintain
    * consistent relative positioning of nulls across sort directions.
    */
-  val nullsInDescOrder: NullPrecedence = NullPrecedence.NONE
+  val nullsInDescOrder: Nulls = Nulls.NONE
 ) {
   enum class Type {
     LONG,
