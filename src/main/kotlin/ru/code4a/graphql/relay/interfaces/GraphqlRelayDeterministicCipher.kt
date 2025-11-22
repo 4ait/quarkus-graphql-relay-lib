@@ -5,24 +5,21 @@ package ru.code4a.graphql.relay.interfaces
  * Implementations provide the cryptographic operations needed for secure
  * handling of node IDs and pagination cursors.
  */
-interface GraphqlRelayCipher {
+interface GraphqlRelayDeterministicCipher {
   /**
-   * Encrypts the input data using the provided key and initialization vector.
+   * Encrypts the input data .
    *
    * @param input The data to encrypt
-   * @param key The encryption key
-   * @param iv The initialization vector
    * @return The encrypted data
    */
-  fun encrypt(input: ByteArray, key: ByteArray, iv: ByteArray): ByteArray
+  fun encrypt(input: ByteArray): ByteArray
 
   /**
-   * Decrypts the input data using the provided key.
-   * The IV should be extracted from the input data by the implementation.
+   * Decrypts the input data.
    *
    * @param input The data to decrypt
    * @param key The decryption key
    * @return The decrypted data
    */
-  fun decrypt(input: ByteArray, key: ByteArray): ByteArray
+  fun decrypt(input: ByteArray): ByteArray
 }

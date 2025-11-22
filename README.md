@@ -29,18 +29,18 @@ Add the dependency to your project:
 
 ## Configuration
 
-Add the following properties to your `application.properties`:
+Configure any secrets required by your `GraphqlRelayDeterministicCipher` implementation in `application.properties` (the
+library itself no longer expects specific property names). For example:
 
 ```properties
-# 32 bytes Base64-encoded key for node ID encryption
-ru.code4a.graphql.relay.node.id.cipher.key-32-bytes-base64=your-base64-encoded-key
-# Base64-encoded salt for node ID encryption
-ru.code4a.graphql.relay.node.id.cipher.salt-base64=your-base64-encoded-salt
-# 32 bytes Base64-encoded key for cursor encryption
-ru.code4a.graphql.relay.cursor.cipher.key-32-bytes-base64=your-base64-encoded-key
-# Base64-encoded salt for cursor encryption
-ru.code4a.graphql.relay.cursor.cipher.salt-base64=your-base64-encoded-salt
+# 32 bytes Base64-encoded key for encrypting IDs and cursors
+ru.code4a.graphql.relay.cipher.key-32-bytes-base64=your-base64-encoded-key
+# Optional salt used to derive deterministic nonces/IVs inside the cipher
+ru.code4a.graphql.relay.cipher.salt-base64=your-base64-encoded-salt
 ```
+
+You can provide multiple cipher beans with different configuration blocks if you need to isolate cursor and node ID
+encryption.
 
 ## Usage
 
@@ -119,33 +119,51 @@ class MyEntityGQLObjectBuilderService : GraphqlRelayEntityGQLObjectBuilderGlobal
 }
 ```
 
-Implement the `GraphqlRelayCipher`:
+Provide a deterministic cipher bean that owns its own key management. The services now expect the cipher to derive and
+encode any IV or nonce internally, so the same input always encrypts to the same output.
+
+Implement the `GraphqlRelayDeterministicCipher`:
 
 ```kotlin
 @ApplicationScoped
-class MyCipher : GraphqlRelayCipher {
-  override fun encrypt(input: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
-    // Implement encryption (e.g., using AES/GCM)
-    // This is just a placeholder - use a secure encryption method
-    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-    val keySpec = SecretKeySpec(key, "AES")
-    val paramSpec = GCMParameterSpec(128, iv)
-    cipher.init(Cipher.ENCRYPT_MODE, keySpec, paramSpec)
-    return cipher.doFinal(input)
+class MyCipher(
+  @ConfigProperty(name = "ru.code4a.graphql.relay.cipher.key-32-bytes-base64")
+  private val secretKeyBase64: String,
+  @ConfigProperty(name = "ru.code4a.graphql.relay.cipher.salt-base64")
+  private val saltBase64: String,
+) : GraphqlRelayDeterministicCipher {
+  private val secretKeySpec by lazy {
+    val bytes = Base64.getDecoder().decode(secretKeyBase64)
+    require(bytes.size == 32) { "Secret Key must be 32 bytes" }
+    SecretKeySpec(bytes, "AES")
   }
 
-  override fun decrypt(input: ByteArray, key: ByteArray): ByteArray {
-    // Implement decryption
-    // This method should extract the IV from the input and use it for decryption
-    // This is just a placeholder - use a secure decryption method
-    val iv = input.sliceArray(0 until 12) // Example for GCM
-    val encryptedData = input.sliceArray(12 until input.size)
+  private val saltBytes by lazy { Base64.getDecoder().decode(saltBase64) }
+
+  override fun encrypt(input: ByteArray): ByteArray {
+    val iv = deriveIv(input)
 
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-    val keySpec = SecretKeySpec(key, "AES")
-    val paramSpec = GCMParameterSpec(128, iv)
-    cipher.init(Cipher.DECRYPT_MODE, keySpec, paramSpec)
-    return cipher.doFinal(encryptedData)
+    cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, GCMParameterSpec(128, iv))
+
+    // Prepend IV so it can be extracted during decryption
+    return iv + cipher.doFinal(input)
+  }
+
+  override fun decrypt(input: ByteArray): ByteArray {
+    val iv = input.copyOfRange(0, 12)
+    val encryptedPayload = input.copyOfRange(12, input.size)
+
+    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+    cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, GCMParameterSpec(128, iv))
+
+    return cipher.doFinal(encryptedPayload)
+  }
+
+  private fun deriveIv(data: ByteArray): ByteArray {
+    val digest = MessageDigest.getInstance("SHA-256")
+    val hash = digest.digest(saltBytes + data)
+    return hash.copyOfRange(0, 12) // 96-bit IV for GCM
   }
 }
 ```
@@ -414,13 +432,15 @@ The `GraphqlRelayEntityGetter` interface can be used to implement access control
 
 ### Secure IDs and Cursors
 
-This library handles secure IDs by encrypting entity identifiers. It uses:
+This library handles secure IDs by encrypting entity identifiers. With the deterministic cipher:
 
-1. AES encryption for Node IDs and Connection cursors
-2. Separate keys and salts for Node IDs and Cursors
-3. IV generation based on data hash to ensure consistent encryption/decryption
+1. AES/GCM (or another modern cipher) can be used for Node IDs and Connection cursors
+2. IV/nonce derivation must happen inside your `GraphqlRelayDeterministicCipher` implementation (and be included with
+   the ciphertext if needed)
+3. Keep keys in a secrets store; you can inject different keys into multiple cipher beans if you want separation between
+   Node IDs and cursors
 
-Always use secure, randomly generated keys and salts in your production environment.
+Always use secure, randomly generated keys and salts in your production environment and rotate them carefully.
 
 ### Access Control Annotations
 
