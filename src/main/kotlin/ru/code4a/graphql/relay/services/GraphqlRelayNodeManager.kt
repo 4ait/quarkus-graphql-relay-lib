@@ -190,6 +190,16 @@ class GraphqlRelayNodeManager(
   }
 
   /**
+   * Gets node information for the specified node ID.
+   *
+   * @param nodeId The node ID to look up
+   * @return NodeInfo for the node ID, or null if not found
+   */
+  internal fun getNodeInfoByNodeId(nodeId: Long): NodeInfo? {
+    return nodeInfoByNodeId[nodeId]
+  }
+
+  /**
    * Generates a node ID for an entity object with the specified GraphQL type.
    *
    * @param obj The entity object

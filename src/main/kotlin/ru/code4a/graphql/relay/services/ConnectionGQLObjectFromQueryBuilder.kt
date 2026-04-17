@@ -110,17 +110,20 @@ class ConnectionGQLObjectFromQueryBuilder(
       currentCursorConverter: CursorConverter,
       cursor: String
     ): List<Comparable<*>> {
-      val graphqlNodeInfo = graphqlRelayNodeManager.getNodeInfoByEntityClass(entityClass)
-
-      require(graphqlNodeInfo != null) { "Entity $entityClass must have a node info" }
-
       val cursorContainer =
         cursorCipherGraphqlNodeService
           .decryptFromCursor(CursorContainer::class.java, cursor)
 
-      require(cursorContainer.nodeId == graphqlNodeInfo.nodeId) {
-        "Entity $entityClass must be equal to ${cursorContainer.nodeId}"
-      }
+      val queryNodeInfo = graphqlRelayNodeManager.getNodeInfoByEntityClass(entityClass)
+      val cursorNodeInfo = graphqlRelayNodeManager.getNodeInfoByNodeId(cursorContainer.nodeId)
+
+      require(cursorNodeInfo != null) { "Cursor node with id ${cursorContainer.nodeId} not found" }
+
+      requireCursorCompatibleWithQueryEntityClass(
+        queryEntityClass = entityClass,
+        queryNodeInfo = queryNodeInfo,
+        cursorNodeInfo = cursorNodeInfo
+      )
 
       val currentUsedOrderFieldsSet =
         currentCursorConverter
@@ -414,6 +417,24 @@ class ConnectionGQLObjectFromQueryBuilder(
           }
         )
     )
+  }
+}
+
+internal fun requireCursorCompatibleWithQueryEntityClass(
+  queryEntityClass: Class<*>,
+  queryNodeInfo: GraphqlRelayNodeManager.NodeInfo?,
+  cursorNodeInfo: GraphqlRelayNodeManager.NodeInfo
+) {
+  if (queryNodeInfo != null) {
+    require(cursorNodeInfo.nodeId == queryNodeInfo.nodeId) {
+      "Entity $queryEntityClass must be equal to ${cursorNodeInfo.entityClass}"
+    }
+
+    return
+  }
+
+  require(queryEntityClass.isAssignableFrom(cursorNodeInfo.entityClass)) {
+    "Entity $queryEntityClass is not compatible with cursor entity ${cursorNodeInfo.entityClass}"
   }
 }
 
