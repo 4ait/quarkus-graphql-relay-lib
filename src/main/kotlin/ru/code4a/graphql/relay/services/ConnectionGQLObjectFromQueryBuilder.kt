@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped
 import jakarta.persistence.EntityManager
 import jakarta.persistence.criteria.CriteriaQuery
 import jakarta.persistence.criteria.Nulls
+import org.hibernate.Hibernate
 import org.hibernate.Session
 import org.hibernate.query.NullPrecedence
 import org.hibernate.query.Order
@@ -147,7 +148,8 @@ class ConnectionGQLObjectFromQueryBuilder(
     }
 
     fun createCursorFromEntity(entity: Any): String {
-      val graphqlNodeInfo = graphqlRelayNodeManager.getNodeInfoByEntityClass(entity::class.java)
+      val graphqlNodeInfo =
+        graphqlRelayNodeManager.getNodeInfoByEntityClass(Hibernate.getClass(entity)) // TODO: tests. make more specific setup
 
       require(graphqlNodeInfo != null) { "Entity ${entity::class.java} must have a node info" }
 
