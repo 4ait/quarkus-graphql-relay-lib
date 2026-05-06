@@ -142,7 +142,13 @@ class GraphqlRelayNodeManager(
 
         val objectIdGetter =
           { obj: Any ->
-            entityGetIdMethod.invoke(obj)
+            val receiver =
+              getHibernateProxySafeReflectionReceiver(
+                obj = obj,
+                declaringClass = entityGetIdMethod.declaringClass
+              )
+
+            entityGetIdMethod.invoke(receiver)
           }
 
         val graphqlNodeGetter =

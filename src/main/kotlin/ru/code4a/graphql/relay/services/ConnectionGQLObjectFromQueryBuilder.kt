@@ -437,7 +437,14 @@ internal fun getCursorOrderValue(
       graphqlNodeInfo.objectIdGetter(entity)
     } else {
       // Native images may not contain reflection metadata for Hibernate proxy subclasses.
-      getCursorEntityValueGetterMethod(entityClass, entityValueGetter).invoke(entity)
+      val getterMethod = getCursorEntityValueGetterMethod(entityClass, entityValueGetter)
+      val receiver =
+        getHibernateProxySafeReflectionReceiver(
+          obj = entity,
+          declaringClass = getterMethod.declaringClass
+        )
+
+      getterMethod.invoke(receiver)
     }
 
   require(value != null)
