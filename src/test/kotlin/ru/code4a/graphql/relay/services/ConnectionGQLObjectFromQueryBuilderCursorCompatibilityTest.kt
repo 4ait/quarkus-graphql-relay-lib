@@ -1,9 +1,30 @@
 package ru.code4a.graphql.relay.services
 
+import jakarta.persistence.EntityManager
+import jakarta.persistence.criteria.CriteriaQuery
+import org.hibernate.Hibernate
+import org.hibernate.Session
+import org.hibernate.proxy.HibernateProxy
+import org.hibernate.proxy.LazyInitializer
+import org.hibernate.query.KeyedPage
+import org.hibernate.query.KeyedResultList
+import org.hibernate.query.Order
+import org.hibernate.query.Page
+import org.hibernate.query.SelectionQuery
+import org.hibernate.query.SortDirection
+import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers
+import org.mockito.Mockito
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
+import ru.code4a.graphql.relay.interfaces.GraphqlRelayDeterministicCipher
 import ru.code4a.graphql.relay.interfaces.GraphqlRelayEntityGetterFactoryService
+import ru.code4a.graphql.relay.interfaces.GraphqlRelayResponseObjectBuilder
 import ru.code4a.graphql.relay.schema.objects.GraphqlNode
+import ru.code4a.graphql.relay.services.containers.CursorContainer
 
 class ConnectionGQLObjectFromQueryBuilderCursorCompatibilityTest {
 
@@ -58,16 +79,129 @@ class ConnectionGQLObjectFromQueryBuilderCursorCompatibilityTest {
     }
   }
 
+  @Test
+  fun `resolves order getter on Hibernate entity class instead of proxy class`() {
+    val proxy = hibernateProxyEntity()
+    val hibernateEntityClass: Class<*> = Hibernate.getClass(proxy)
+
+    val runtimeGetter = proxy.javaClass.getMethod("getName")
+    val entityGetter =
+      getCursorEntityValueGetterMethod(
+        entityClass = hibernateEntityClass,
+        entityValueGetter = "getName"
+      )
+
+    assertSame(CursorProxyTestEntity::class.java, hibernateEntityClass)
+    assertSame(CursorProxyTestEntityHibernateProxy::class.java, runtimeGetter.declaringClass)
+    assertSame(CursorProxyTestEntity::class.java, entityGetter.declaringClass)
+    assertNotSame(runtimeGetter, entityGetter)
+
+    val value =
+      getCursorOrderValue(
+        entity = proxy,
+        entityClass = hibernateEntityClass,
+        graphqlNodeInfo = nodeInfo(
+          nodeId = 400,
+          entityClass = CursorProxyTestEntity::class.java
+        ),
+        entityFieldName = "name",
+        entityValueGetter = "getName"
+      )
+
+    assertEquals("proxy-name", value)
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  @Test
+  fun `build creates id cursor for Hibernate proxy result without proxy class reflection`() {
+    val proxy = hibernateProxyEntity(id = 7, name = "proxy-name")
+
+    val cursorCipherGraphqlNodeService =
+      CursorCipherGraphqlNodeService(IdentityGraphqlRelayDeterministicCipher)
+
+    val graphqlRelayNodeManager =
+      GraphqlRelayNodeManager(NodeIdCipherGraphqlNodeService(IdentityGraphqlRelayDeterministicCipher))
+
+    val selectionQuery =
+      Mockito.mock(SelectionQuery::class.java) as SelectionQuery<CursorProxyTestEntity>
+    val resultPage =
+      Page
+        .first(1)
+        .keyedBy(Order.desc(CursorProxyTestEntity::class.java, "id"))
+    val keyedResultList =
+      KeyedResultList(
+        listOf(proxy),
+        listOf(listOf(7L)),
+        resultPage,
+        null,
+        null
+      )
+
+    Mockito
+      .`when`(selectionQuery.getKeyedResultList(ArgumentMatchers.any<KeyedPage<CursorProxyTestEntity>>()))
+      .thenReturn(keyedResultList)
+
+    val entityManager = Mockito.mock(EntityManager::class.java)
+    val session = Mockito.mock(Session::class.java)
+    val query = Mockito.mock(CriteriaQuery::class.java) as CriteriaQuery<CursorProxyTestEntity>
+
+    Mockito
+      .`when`(entityManager.unwrap(Session::class.java))
+      .thenReturn(session)
+    Mockito
+      .`when`(session.createSelectionQuery(query))
+      .thenReturn(selectionQuery)
+
+    val connectionBuilder =
+      ConnectionGQLObjectFromQueryBuilder(
+        entityManager = entityManager,
+        graphqlRelayNodeManager = graphqlRelayNodeManager,
+        cursorCipherGraphqlNodeService = cursorCipherGraphqlNodeService
+      )
+
+    val connection =
+      connectionBuilder.build(
+        clazz = CursorProxyTestEntity::class.java,
+        query = query,
+        first = 1,
+        last = null,
+        after = null,
+        before = null,
+        order = null,
+        builder =
+          object : GraphqlRelayResponseObjectBuilder<CursorProxyTestEntity, DummyGraphqlNode> {
+            override fun get(from: CursorProxyTestEntity): DummyGraphqlNode = DummyGraphqlNode("node-${from.getId()}")
+          }
+      )
+
+    val edge = connection.edges.single()
+    val cursorContainer =
+      cursorCipherGraphqlNodeService.decryptFromCursor(CursorContainer::class.java, edge.cursor)
+
+    assertEquals(500, cursorContainer.nodeId)
+    assertEquals(listOf("id"), cursorContainer.cursorFields)
+    assertEquals(listOf("7"), cursorContainer.cursorValues)
+
+    val pageCaptor =
+      ArgumentCaptor.forClass(KeyedPage::class.java) as ArgumentCaptor<KeyedPage<CursorProxyTestEntity>>
+    Mockito.verify(selectionQuery).getKeyedResultList(pageCaptor.capture())
+
+    val defaultOrder = pageCaptor.value.keyDefinition.single()
+    assertEquals("id", defaultOrder.attributeName())
+    assertEquals(SortDirection.DESCENDING, defaultOrder.direction())
+  }
+
   private fun nodeInfo(
     nodeId: Long,
-    entityClass: Class<*>
+    entityClass: Class<*>,
+    objectIdGetter: (Any) -> Any = { 1L }
   ): GraphqlRelayNodeManager.NodeInfo {
     return GraphqlRelayNodeManager.NodeInfo(
       nodeId = nodeId,
       entityClass = entityClass,
       graphqlObjectClass = DummyGraphqlNode::class.java,
       graphqlType = "DummyGraphqlNode",
-      objectIdGetter = { 1L },
+      objectIdGetter = objectIdGetter,
       entityGetter =
         object : GraphqlRelayEntityGetterFactoryService.GraphqlRelayEntityGetter {
           override fun getEntityById(id: Long): Any? = null
@@ -83,6 +217,42 @@ class ConnectionGQLObjectFromQueryBuilderCursorCompatibilityTest {
   private class LegalDomainEntity : SubjectDomainEntity()
 
   private class UnrelatedDomainEntity
+
+  private class CursorProxyTestEntityHibernateProxy(
+    id: Long,
+    name: String,
+    private val lazyInitializer: LazyInitializer
+  ) : CursorProxyTestEntity(id, name), HibernateProxy {
+    override fun getName(): String = super.getName()
+
+    override fun getHibernateLazyInitializer(): LazyInitializer = lazyInitializer
+
+    override fun writeReplace(): Any = this
+  }
+
+  private fun hibernateProxyEntity(
+    id: Long = 7,
+    name: String = "proxy-name"
+  ): CursorProxyTestEntityHibernateProxy {
+    val implementation = CursorProxyTestEntity(id, name)
+    val lazyInitializer = Mockito.mock(LazyInitializer::class.java)
+
+    Mockito
+      .`when`(lazyInitializer.implementation)
+      .thenReturn(implementation)
+
+    return CursorProxyTestEntityHibernateProxy(
+      id = id,
+      name = name,
+      lazyInitializer = lazyInitializer
+    )
+  }
+
+  private object IdentityGraphqlRelayDeterministicCipher : GraphqlRelayDeterministicCipher {
+    override fun encrypt(input: ByteArray): ByteArray = input
+
+    override fun decrypt(input: ByteArray): ByteArray = input
+  }
 
   private data class DummyGraphqlNode(
     override val id: String = "dummy"

@@ -71,6 +71,7 @@ class GraphqlRelayNodeManager(
           .getResource("ru/code4a/graphql/relay/gen/relaynodeobjects")!!
           .readText()
           .split("\n")
+          .filter { it.isNotBlank() }
 
       val graphqlRelayEntityGQLObjectBuilderGlobalService =
         ServiceLoader.load(GraphqlRelayEntityGQLObjectBuilderGlobalService::class.java).first()

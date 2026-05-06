@@ -20,7 +20,11 @@ import ru.code4a.graphql.relay.schema.objects.ConnectionGQLObject
 import ru.code4a.graphql.relay.services.containers.CursorContainer
 import ru.code4a.graphql.relay.utils.reverse
 import ru.code4a.graphql.relay.utils.withNullPrecedence
+import java.lang.reflect.Method
 import java.time.Instant
+
+private const val DEFAULT_ID_CURSOR_FIELD = "id"
+private const val DEFAULT_ID_CURSOR_VALUE_GETTER = "getId"
 
 /**
  * Service for building ConnectionGQLObject instances from JPA queries.
@@ -148,10 +152,12 @@ class ConnectionGQLObjectFromQueryBuilder(
     }
 
     fun createCursorFromEntity(entity: Any): String {
-      val graphqlNodeInfo =
-        graphqlRelayNodeManager.getNodeInfoByEntityClass(Hibernate.getClass(entity)) // TODO: tests. make more specific setup
+      val entityClass = Hibernate.getClass(entity)
 
-      require(graphqlNodeInfo != null) { "Entity ${entity::class.java} must have a node info" }
+      val graphqlNodeInfo =
+        graphqlRelayNodeManager.getNodeInfoByEntityClass(entityClass)
+
+      require(graphqlNodeInfo != null) { "Entity $entityClass must have a node info" }
 
       val cursorContainer =
         CursorContainer(
@@ -163,19 +169,16 @@ class ConnectionGQLObjectFromQueryBuilder(
           cursorValues = orderConverters
             .map { orderConverter ->
               val value =
-                entity
-                  .javaClass
-                  .getMethod(
-                    orderConverter.entityValueGetter
-                  )
-                  .invoke(
-                    entity
-                  )
-
-              require(value != null)
+                getCursorOrderValue(
+                  entity = entity,
+                  entityClass = graphqlNodeInfo.entityClass,
+                  graphqlNodeInfo = graphqlNodeInfo,
+                  entityFieldName = orderConverter.entityFieldName,
+                  entityValueGetter = orderConverter.entityValueGetter
+                )
 
               orderConverter.converterToString(
-                value as Comparable<*>
+                value
               )
             }
         )
@@ -420,6 +423,33 @@ class ConnectionGQLObjectFromQueryBuilder(
         )
     )
   }
+}
+
+internal fun getCursorOrderValue(
+  entity: Any,
+  entityClass: Class<*>,
+  graphqlNodeInfo: GraphqlRelayNodeManager.NodeInfo,
+  entityFieldName: String,
+  entityValueGetter: String
+): Comparable<*> {
+  val value =
+    if (entityFieldName == DEFAULT_ID_CURSOR_FIELD && entityValueGetter == DEFAULT_ID_CURSOR_VALUE_GETTER) {
+      graphqlNodeInfo.objectIdGetter(entity)
+    } else {
+      // Native images may not contain reflection metadata for Hibernate proxy subclasses.
+      getCursorEntityValueGetterMethod(entityClass, entityValueGetter).invoke(entity)
+    }
+
+  require(value != null)
+
+  return value as Comparable<*>
+}
+
+internal fun getCursorEntityValueGetterMethod(
+  entityClass: Class<*>,
+  entityValueGetter: String
+): Method {
+  return entityClass.getMethod(entityValueGetter)
 }
 
 internal fun requireCursorCompatibleWithQueryEntityClass(
