@@ -22,8 +22,9 @@ data class CursorProxyTestNode(
 ) : GraphqlNode
 
 class CursorProxyTestObjectBuilderGlobalService : GraphqlRelayEntityGQLObjectBuilderGlobalService {
-  override fun create(graphqlRelayNodeEntityObjectClass: Class<*>):
-    GraphqlRelayEntityGQLObjectBuilderGlobalService.GraphqlRelayEntityGQLObjectBuilderItem {
+  override fun create(
+    graphqlRelayNodeEntityObjectClass: Class<*>
+  ): GraphqlRelayEntityGQLObjectBuilderGlobalService.GraphqlRelayEntityGQLObjectBuilderItem {
     require(graphqlRelayNodeEntityObjectClass == CursorProxyTestNode::class.java)
 
     return object : GraphqlRelayEntityGQLObjectBuilderGlobalService.GraphqlRelayEntityGQLObjectBuilderItem {
